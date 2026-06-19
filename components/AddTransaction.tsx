@@ -7,15 +7,15 @@
 //
 // À la validation, on construit une Transaction et on remonte au parent.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Transaction,
   Category,
   CATEGORY_LABELS,
+  CATEGORY_COLORS,
 } from "@/lib/types";
 import {
   parseTransactionText,
-  detectCategory,
   flowForCategory,
 } from "@/lib/categorize";
 import { parseDioula, DIOULA_VOCAB } from "@/lib/dioula";
@@ -72,6 +72,20 @@ export function AddTransaction({
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const recogRef = useRef<SpeechRecognitionLike | null>(null);
 
+  // Animation "machine à écrire" : on révèle la transcription mot par mot.
+  // `typedCount` = nombre de mots affichés ; il rattrape progressivement le
+  // texte reconnu (qui grandit pendant l'écoute), ce qui donne l'effet voulu.
+  const [typedCount, setTypedCount] = useState(0);
+  const words = transcript.trim() ? transcript.trim().split(/\s+/) : [];
+  const fullyTyped = words.length > 0 && typedCount >= words.length;
+  const typedTranscript = words.slice(0, typedCount).join(" ");
+
+  useEffect(() => {
+    if (typedCount >= words.length) return;
+    const id = setTimeout(() => setTypedCount((c) => c + 1), 90);
+    return () => clearTimeout(id);
+  }, [typedCount, words.length]);
+
   function startVoice() {
     setVoiceError(null);
     const Ctor =
@@ -108,6 +122,7 @@ export function AddTransaction({
     recogRef.current = recog;
     setListening(true);
     setTranscript("");
+    setTypedCount(0); // relance l'effet machine à écrire
     recog.start();
   }
 
@@ -136,14 +151,17 @@ export function AddTransaction({
   // -- mode photo (OCR simulé) ---------------------------------------------
   const [fileName, setFileName] = useState<string | null>(null);
   const [ocrRunning, setOcrRunning] = useState(false);
+  // Surbrillance du champ montant juste après le remplissage automatique.
+  const [amountHighlight, setAmountHighlight] = useState(false);
 
   function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setFileName(file.name);
     setOcrRunning(true);
-    // OCR SIMULÉ : on simule un délai d'analyse puis on pré-remplit un montant
-    // plausible (éditable). En production : OCR réel (Tesseract / API vision).
+    setAmountHighlight(false);
+    // OCR SIMULÉ : délai artificiel de 1,2 s ("Lecture du reçu…") puis on
+    // pré-remplit un montant plausible (éditable). En production : OCR réel.
     setTimeout(() => {
       const fakeAmount = 1500 + Math.floor(Math.random() * 12) * 500;
       setDraft({
@@ -152,7 +170,10 @@ export function AddTransaction({
         category: "achat_stock",
       });
       setOcrRunning(false);
-    }, 1100);
+      setAmountHighlight(true); // déclenche l'animation de surbrillance
+      // on retire la classe après l'animation pour pouvoir la rejouer
+      setTimeout(() => setAmountHighlight(false), 1500);
+    }, 1200);
   }
 
   // -- validation ----------------------------------------------------------
@@ -262,17 +283,44 @@ export function AddTransaction({
             <button
               onClick={listening ? stopVoice : startVoice}
               className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition ${
-                listening ? "bg-red-500" : "bg-brand"
+                listening ? "animate-listen bg-red-500" : "bg-brand"
               }`}
             >
-              {listening ? "● Écoute en cours… (toucher pour arrêter)" : "🎤 Parler"}
+              {listening ? "🎙️ Écoute… (toucher pour arrêter)" : "🎤 Parler"}
             </button>
 
-            {transcript && (
+            {/* Transcription en effet machine à écrire */}
+            {(listening || transcript) && (
               <p className="rounded-lg bg-gray-50 px-3 py-2 text-[12px] italic text-gray-600">
-                « {transcript} »
+                {typedTranscript ? `« ${typedTranscript}` : ""}
+                {!fullyTyped && <span className="typewriter-caret">&nbsp;</span>}
+                {typedTranscript && fullyTyped ? " »" : ""}
+                {!typedTranscript && listening && (
+                  <span className="not-italic text-gray-400">
+                    Parlez maintenant
+                    <span className="dot">.</span>
+                    <span className="dot">.</span>
+                    <span className="dot">.</span>
+                  </span>
+                )}
               </p>
             )}
+
+            {/* Badge "catégorie détectée" avec fade-in, une fois le texte écrit */}
+            {fullyTyped && draft.amount > 0 && (
+              <div className="animate-badge flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2 text-[12px] text-brand">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: CATEGORY_COLORS[draft.category] }}
+                />
+                <span>
+                  ✨ Détecté par l&apos;IA :{" "}
+                  <strong>{CATEGORY_LABELS[draft.category]}</strong> ·{" "}
+                  {draft.amount.toLocaleString("fr-FR")} FCFA
+                </span>
+              </div>
+            )}
+
             {voiceError && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-[12px] text-red-600">
                 {voiceError}
@@ -296,8 +344,12 @@ export function AddTransaction({
               />
             </label>
             {ocrRunning && (
-              <p className="text-center text-[12px] text-brand">
-                Analyse du reçu en cours… (OCR simulé)
+              <p className="flex items-center justify-center gap-1 text-center text-[12px] font-medium text-brand">
+                <span className="animate-listen inline-block h-2 w-2 rounded-full bg-brand" />
+                Lecture du reçu
+                <span className="dot">.</span>
+                <span className="dot">.</span>
+                <span className="dot">.</span>
               </p>
             )}
             <p className="text-center text-[11px] text-gray-400">
@@ -320,7 +372,9 @@ export function AddTransaction({
                 onChange={(e) =>
                   setDraft({ ...draft, amount: parseInt(e.target.value, 10) || 0 })
                 }
-                className="mt-0.5 w-full rounded-lg border border-gray-200 px-2 py-2 text-sm outline-none focus:border-brand"
+                className={`mt-0.5 w-full rounded-lg border border-gray-200 px-2 py-2 text-sm outline-none focus:border-brand ${
+                  amountHighlight ? "animate-highlight" : ""
+                }`}
               />
             </div>
             <div>

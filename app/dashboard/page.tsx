@@ -31,6 +31,7 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<MerchantProfile | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [ready, setReady] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const today = todayISO();
 
   // Chargement initial côté client (localStorage / seed).
@@ -65,16 +66,22 @@ export default function DashboardPage() {
   }
 
   function handleGeneratePDF() {
-    if (!profile || !score) return;
+    if (!profile || !score || generating) return;
+    // Petit délai "Génération de votre dossier…" avant le téléchargement,
+    // pour matérialiser le travail de l'IA (logique PDF inchangée).
+    setGenerating(true);
     const dates = metrics.jours.map((j) => j.date);
-    genererDossierPDF({
-      profile,
-      metrics,
-      score,
-      summary,
-      periodeDebut: dates[0] ?? today,
-      periodeFin: dates[dates.length - 1] ?? today,
-    });
+    setTimeout(() => {
+      genererDossierPDF({
+        profile,
+        metrics,
+        score,
+        summary,
+        periodeDebut: dates[0] ?? today,
+        periodeFin: dates[dates.length - 1] ?? today,
+      });
+      setGenerating(false);
+    }, 1000);
   }
 
   if (!ready || !profile || !score) {
@@ -216,9 +223,20 @@ export default function DashboardPage() {
           </p>
           <button
             onClick={handleGeneratePDF}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-3 text-sm font-semibold text-white"
+            disabled={generating}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-3 text-sm font-semibold text-white transition disabled:opacity-80"
           >
-            📄 Générer mon dossier de financement
+            {generating ? (
+              <>
+                <span className="animate-listen inline-block h-2.5 w-2.5 rounded-full bg-white" />
+                Génération de votre dossier
+                <span className="dot">.</span>
+                <span className="dot">.</span>
+                <span className="dot">.</span>
+              </>
+            ) : (
+              <>📄 Générer mon dossier de financement</>
+            )}
           </button>
         </section>
 

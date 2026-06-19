@@ -1,6 +1,7 @@
 // Carte du pré-score de confiance EXPLICABLE + facteurs détaillés.
 
 import { ConfidenceScore } from "@/lib/score";
+import { ConfidenceRadar } from "./ConfidenceRadar";
 
 export function ConfidenceCard({ score }: { score: ConfidenceScore }) {
   const pct = Math.max(0, Math.min(100, score.total));
@@ -44,6 +45,14 @@ export function ConfidenceCard({ score }: { score: ConfidenceScore }) {
           <span className="text-2xl font-extrabold text-brand">{pct}</span>
           <span className="text-[10px] text-gray-400">sur 100</span>
         </div>
+      </div>
+
+      {/* Vue radar des 3 facteurs (en complément du score numérique) */}
+      <div className="mt-2 border-t border-gray-100 pt-2">
+        <p className="mb-1 text-center text-[11px] font-medium text-gray-500">
+          Profil de confiance (3 facteurs)
+        </p>
+        <ConfidenceRadar score={score} />
       </div>
 
       {/* Facteurs explicables */}

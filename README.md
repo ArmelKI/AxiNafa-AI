@@ -18,11 +18,19 @@ smartphone d'entrée de gamme).
 |---|----------------|--------|
 | 1 | **Page d'accueil** | Problème / solution / impact + bouton « Tester la démo ». |
 | 2 | **Tableau de bord** | Ventes du jour, dépenses, bénéfice estimé, solde, graphique 30 jours (recharts), liste des transactions, jours forts. |
-| 3 | **Ajout intelligent** | 3 modes : **texte** (« vente jus 5000 »), **voix** (Web Speech API, FR + mode *dioula vocabulaire restreint, démo*), **photo de reçu** (OCR simulé, montant éditable). |
+| 3 | **Ajout intelligent** | 4 modes : **texte** (« vente jus 5000 »), **voix** (Web Speech API, FR + mode *dioula vocabulaire restreint, démo*), **photo de reçu** (OCR simulé, montant éditable), **Mobile Money** (import simulé Orange/Moov Money). |
 | 4 | **Catégorisation IA** | Classement par règles + mots-clés (vente, achat stock, transport, dette client, autre) et estimation du bénéfice. Point d'extension `// TODO LLM` pour brancher Mistral. |
 | 5 | **Résumé IA** | Synthèse en langage simple (« Vos ventes montent le week-end… »), par règles. |
 | 6 | **Pré-score de confiance explicable** | Score 0-100 à partir de la **régularité**, l'**ancienneté** et le **volume**, avec affichage des facteurs. Mention « indicatif, ne remplace pas la décision d'une institution ». |
-| 7 | **Dossier de financement PDF** | Génération client (jsPDF) : identité, période, CA, dépenses, bénéfice, régularité, pré-score, montant conseillé, mention de responsabilité. |
+| 7 | **Dossier de financement PDF** | Génération client (jsPDF) : identité, période, CA, dépenses, bénéfice, régularité, pré-score, **objectif** (congélateur 150 000 FCFA), montant conseillé, mention de responsabilité. |
+| 8 | **Objectif de financement** | Carte reliant l'activité au projet concret du commerçant et au montant conseillé (raconte l'ambition : activité → preuve → croissance). |
+| 9 | **Graphique radar** | Vue radar (recharts) des 3 facteurs du pré-score, en complément du score numérique. |
+| 10 | **IA responsable** | Encart de positionnement : AxiNafa ne prête pas, l'humain décide, données locales — angle prudent et différenciant. |
+| 11 | **Mode Visite guidée** | Bouton « ▶ Visite guidée » qui rejoue le parcours d'Awa (saisie vocale simulée → catégorisation → score → objectif → génération PDF) avec narration et mise en valeur animée de chaque section : le jury comprend toute l'ambition en un clic. |
+
+> **Micro-animations « traitement IA »** : écoute vocale pulsée + transcription en
+> effet machine à écrire + badge catégorie en fade-in ; « Lecture du reçu… » puis
+> surbrillance du montant ; « Génération de votre dossier… » avant le PDF.
 
 ### Données de démonstration (seed)
 Profil pré-chargé : **Awa, vendeuse de jus, Bobo-Dioulasso**, avec **30 jours**

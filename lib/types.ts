@@ -22,7 +22,7 @@ export interface Transaction {
   category: Category;
   flow: Flow;
   /** Mode de saisie d'origine, utile pour la démo. */
-  source?: "texte" | "voix" | "photo" | "seed";
+  source?: "texte" | "voix" | "photo" | "momo" | "seed";
 }
 
 export interface MerchantProfile {
@@ -31,6 +31,17 @@ export interface MerchantProfile {
   city: string;
   /** Date ISO de début d'activité — sert au calcul d'ancienneté. */
   since: string;
+  /** Objectif de financement concret du commerçant (raconte l'ambition). */
+  goal?: FinancingGoal;
+}
+
+export interface FinancingGoal {
+  /** Ce que le financement permet d'acheter, ex. "un congélateur". */
+  label: string;
+  /** Montant visé en FCFA. */
+  amount: number;
+  /** Emoji illustratif pour l'UI. */
+  emoji?: string;
 }
 
 /** Libellés humains pour l'affichage des catégories. */

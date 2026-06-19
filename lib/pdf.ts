@@ -138,6 +138,20 @@ export function genererDossierPDF(input: DossierInput): void {
   doc.text(formatFCFA(score.financementConseille), margin + 4, y + 14);
   y += 24;
 
+  // Objectif concret du commercant (raconte l'usage du financement).
+  if (profile.goal) {
+    doc.setTextColor(60, 60, 60);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    const objectif = `Objectif du commercant : ${profile.goal.label} (estime a ${formatFCFA(
+      profile.goal.amount
+    )}).`;
+    const olines = doc.splitTextToSize(objectif, pageW - margin * 2);
+    y = checkPage(doc, y, olines.length * 5, margin);
+    doc.text(olines, margin, y);
+    y += olines.length * 5 + 4;
+  }
+
   // --- Avertissement -------------------------------------------------------
   doc.setTextColor(120, 120, 120);
   doc.setFont("helvetica", "italic");

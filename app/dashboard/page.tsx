@@ -4,8 +4,7 @@
 // Charge l'état (seed ou localStorage), calcule métriques / résumé / score,
 // permet d'ajouter une transaction et de générer le dossier PDF.
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { StatCard } from "@/components/StatCard";
 import { SalesChart } from "@/components/SalesChart";
@@ -13,6 +12,9 @@ import { TransactionList } from "@/components/TransactionList";
 import { AISummary } from "@/components/AISummary";
 import { ConfidenceCard } from "@/components/ConfidenceCard";
 import { AddTransaction } from "@/components/AddTransaction";
+import { GoalCard } from "@/components/GoalCard";
+import { ResponsibleAI } from "@/components/ResponsibleAI";
+import { GuidedTour, TourStep } from "@/components/GuidedTour";
 
 import { Transaction, MerchantProfile } from "@/lib/types";
 import {
@@ -20,6 +22,7 @@ import {
   saveTransactions,
   loadProfile,
   resetDemo,
+  newId,
 } from "@/lib/store";
 import { computeMetrics, generateSummary } from "@/lib/summary";
 import { computeScore } from "@/lib/score";
@@ -33,6 +36,20 @@ export default function DashboardPage() {
   const [ready, setReady] = useState(false);
   const [generating, setGenerating] = useState(false);
   const today = todayISO();
+
+  // -- Visite guidée -------------------------------------------------------
+  const [tourIndex, setTourIndex] = useState<number | null>(null);
+  const [highlightKey, setHighlightKey] = useState<string | null>(null);
+  const refs = {
+    top: useRef<HTMLDivElement>(null),
+    summary: useRef<HTMLDivElement>(null),
+    chart: useRef<HTMLDivElement>(null),
+    score: useRef<HTMLDivElement>(null),
+    goal: useRef<HTMLDivElement>(null),
+    pdf: useRef<HTMLDivElement>(null),
+    tx: useRef<HTMLDivElement>(null),
+  };
+  const hl = (key: string) => (highlightKey === key ? " tour-highlight" : "");
 
   // Chargement initial côté client (localStorage / seed).
   useEffect(() => {
@@ -65,6 +82,115 @@ export default function DashboardPage() {
     setTransactions(resetDemo());
   }
 
+  // Étapes de la visite guidée : narration + cible à mettre en valeur + action.
+  const tourConfig: (TourStep & {
+    focus: keyof typeof refs;
+    action?: "voice" | "pdf";
+  })[] = [
+    {
+      focus: "top",
+      title: "Voici Awa, vendeuse de jus à Bobo-Dioulasso",
+      text: "Comme des millions de commerçants, elle vend chaque jour mais reste invisible pour les banques. Suivons comment AxiNafa transforme son activité en preuve de confiance.",
+    },
+    {
+      focus: "tx",
+      badge: "Saisie vocale en cours…",
+      title: "1. Elle note sa vente, en parlant",
+      text: "« J'ai vendu 5000 de jus aujourd'hui. » AxiNafa comprend, catégorise et enregistre — sans paperasse, sans compétence comptable.",
+      action: "voice",
+    },
+    {
+      focus: "summary",
+      title: "2. L'IA range et explique",
+      text: "Chaque opération est classée automatiquement, et un résumé en langage simple lui dit ce qui marche : « Vos ventes montent le week-end… »",
+    },
+    {
+      focus: "chart",
+      title: "3. Elle comprend son activité",
+      text: "Tendance des 30 jours et jours forts apparaissent clairement. Awa pilote enfin son commerce avec des chiffres.",
+    },
+    {
+      focus: "score",
+      title: "4. Un pré-score de confiance explicable",
+      text: "Régularité, ancienneté, volume : AxiNafa calcule un score transparent. Pas de boîte noire — chaque facteur est justifié.",
+    },
+    {
+      focus: "goal",
+      title: "5. Un objectif concret",
+      text: "Awa veut un congélateur pour vendre frais et gagner plus. AxiNafa relie son activité à ce projet de financement.",
+    },
+    {
+      focus: "pdf",
+      badge: "Génération du dossier…",
+      title: "6. Un dossier de financement en un clic",
+      text: "AxiNafa produit un PDF crédible, prêt à présenter à une microfinance. La décision reste humaine : nous fournissons la preuve, pas le crédit.",
+      action: "pdf",
+    },
+    {
+      focus: "top",
+      title: "Voilà l'ambition : rendre visibles les invisibles",
+      text: "AxiNafa AI, c'est la passerelle entre l'économie informelle et l'inclusion financière. Une solution africaine, pour des problèmes africains.",
+    },
+  ];
+
+  const tourSteps: TourStep[] = tourConfig.map(({ title, text, badge }) => ({
+    title,
+    text,
+    badge,
+  }));
+
+  // Garde-fous : déclencher les actions (saisie/PDF) une seule fois par visite.
+  const voiceDoneRef = useRef(false);
+  const pdfDoneRef = useRef(false);
+
+  function startTour() {
+    voiceDoneRef.current = false;
+    pdfDoneRef.current = false;
+    setTourIndex(0);
+  }
+
+  function endTour() {
+    setTourIndex(null);
+    setHighlightKey(null);
+  }
+
+  // À chaque changement d'étape : on défile vers la cible, on la met en valeur,
+  // et on exécute l'éventuelle action (saisie vocale simulée / génération PDF).
+  const runTourStep = useCallback(
+    (i: number) => {
+      const cfg = tourConfig[i];
+      if (!cfg) return;
+      setHighlightKey(cfg.focus);
+      const el = refs[cfg.focus].current;
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      if (cfg.action === "voice" && !voiceDoneRef.current) {
+        voiceDoneRef.current = true;
+        // Saisie vocale simulée : on ajoute une vente de 5000 FCFA datée du jour.
+        const t: Transaction = {
+          id: newId(),
+          date: today,
+          label: "Vente de jus (saisie vocale)",
+          amount: 5000,
+          category: "vente",
+          flow: "entree",
+          source: "voix",
+        };
+        setTimeout(() => addTransaction(t), 600);
+      }
+      if (cfg.action === "pdf" && !pdfDoneRef.current) {
+        pdfDoneRef.current = true;
+        setTimeout(() => handleGeneratePDF(), 800);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [today]
+  );
+
+  useEffect(() => {
+    if (tourIndex !== null) runTourStep(tourIndex);
+  }, [tourIndex, runTourStep]);
+
   function handleGeneratePDF() {
     if (!profile || !score || generating) return;
     // Petit délai "Génération de votre dossier…" avant le téléchargement,
@@ -96,15 +222,23 @@ export default function DashboardPage() {
     <main className="min-h-screen pb-28">
       {/* En-tête */}
       <header className="bg-brand text-white">
-        <div className="app-shell px-5 pb-6 pt-6">
-          <div className="flex items-center justify-between">
+        <div ref={refs.top} className={`app-shell px-5 pb-6 pt-6${hl("top")}`}>
+          <div className="flex items-center justify-between gap-2">
             <Logo variant="light" />
-            <button
-              onClick={handleReset}
-              className="rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-medium text-white"
-            >
-              ↺ Réinitialiser
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={startTour}
+                className="rounded-full bg-accent px-3 py-1.5 text-[11px] font-bold text-gray-900"
+              >
+                ▶ Visite guidée
+              </button>
+              <button
+                onClick={handleReset}
+                className="rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-medium text-white"
+              >
+                ↺
+              </button>
+            </div>
           </div>
 
           <div className="mt-5">
@@ -159,10 +293,17 @@ export default function DashboardPage() {
         </section>
 
         {/* Résumé IA */}
-        <AISummary phrases={summary} />
+        <div ref={refs.summary} className={`rounded-2xl${hl("summary")}`}>
+          <AISummary phrases={summary} />
+        </div>
 
         {/* Graphique 30 jours */}
-        <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+        <section
+          ref={refs.chart}
+          className={`rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5${hl(
+            "chart"
+          )}`}
+        >
           <div className="mb-1 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-gray-800">
               Activité des 30 derniers jours
@@ -206,10 +347,27 @@ export default function DashboardPage() {
         </section>
 
         {/* Pré-score de confiance */}
-        <ConfidenceCard score={score} />
+        <div ref={refs.score} className={`rounded-2xl${hl("score")}`}>
+          <ConfidenceCard score={score} />
+        </div>
+
+        {/* Objectif de financement (raconte l'ambition) */}
+        {profile.goal && (
+          <div ref={refs.goal} className={`rounded-2xl${hl("goal")}`}>
+            <GoalCard
+              goal={profile.goal}
+              financementConseille={score.financementConseille}
+            />
+          </div>
+        )}
 
         {/* Génération du dossier de financement */}
-        <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+        <section
+          ref={refs.pdf}
+          className={`rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5${hl(
+            "pdf"
+          )}`}
+        >
           <h3 className="text-sm font-semibold text-gray-800">
             Dossier de financement
           </h3>
@@ -241,7 +399,12 @@ export default function DashboardPage() {
         </section>
 
         {/* Transactions */}
-        <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+        <section
+          ref={refs.tx}
+          className={`rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5${hl(
+            "tx"
+          )}`}
+        >
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-gray-800">
               Dernières transactions
@@ -253,14 +416,21 @@ export default function DashboardPage() {
           <TransactionList transactions={transactions} limit={12} />
         </section>
 
+        {/* Encart IA responsable */}
+        <ResponsibleAI />
+
         <p className="px-1 text-center text-[11px] text-gray-400">
           Données de démonstration (Awa, vendeuse de jus). Vos ajouts sont
           stockés localement dans ce navigateur.
         </p>
       </div>
 
-      {/* Bouton flottant d'ajout */}
-      <div className="fixed inset-x-0 bottom-0 z-40">
+      {/* Bouton flottant d'ajout (masqué pendant la visite guidée) */}
+      <div
+        className={`fixed inset-x-0 bottom-0 z-40 ${
+          tourIndex !== null ? "hidden" : ""
+        }`}
+      >
         <div className="app-shell px-5 pb-5">
           <button
             onClick={() => setShowAdd(true)}
@@ -273,6 +443,23 @@ export default function DashboardPage() {
 
       {showAdd && (
         <AddTransaction onAdd={addTransaction} onClose={() => setShowAdd(false)} />
+      )}
+
+      {/* Overlay de visite guidée */}
+      {tourIndex !== null && (
+        <GuidedTour
+          steps={tourSteps}
+          index={tourIndex}
+          onNext={() =>
+            setTourIndex((i) =>
+              i === null ? null : Math.min(i + 1, tourSteps.length - 1)
+            )
+          }
+          onPrev={() =>
+            setTourIndex((i) => (i === null ? null : Math.max(i - 1, 0)))
+          }
+          onClose={endTour}
+        />
       )}
     </main>
   );

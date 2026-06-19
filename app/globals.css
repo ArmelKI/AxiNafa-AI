@@ -135,3 +135,24 @@ body {
 .dot:nth-child(3) {
   animation-delay: 0.4s;
 }
+
+/* Mise en valeur de la section ciblée pendant la visite guidée. */
+.tour-highlight {
+  position: relative;
+  z-index: 30;
+  box-shadow: 0 0 0 3px #e2a03f, 0 12px 30px rgba(0, 0, 0, 0.18);
+  border-radius: 1rem;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  animation: tourPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes tourPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgba(226, 160, 63, 1), 0 12px 30px rgba(0, 0, 0, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(226, 160, 63, 0.55),
+      0 12px 30px rgba(0, 0, 0, 0.18);
+  }
+}

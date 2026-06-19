@@ -13,6 +13,11 @@ export const SEED_PROFILE: MerchantProfile = {
   activity: "Vente de jus naturels (bissap, gingembre, tamarin)",
   city: "Bobo-Dioulasso",
   since: "2025-02-10", // ~16 mois d'activité au 19/06/2026
+  goal: {
+    label: "Acheter un congélateur pour vendre frais",
+    amount: 150_000,
+    emoji: "🧊",
+  },
 };
 
 /** Générateur pseudo-aléatoire déterministe (mulberry32). */

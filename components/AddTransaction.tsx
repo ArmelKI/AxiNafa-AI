@@ -22,7 +22,7 @@ import { parseDioula, DIOULA_VOCAB } from "@/lib/dioula";
 import { newId } from "@/lib/store";
 import { todayISO } from "@/lib/format";
 
-type Mode = "texte" | "voix" | "photo";
+type Mode = "texte" | "voix" | "photo" | "momo";
 
 interface Draft {
   label: string;
@@ -176,6 +176,40 @@ export function AddTransaction({
     }, 1200);
   }
 
+  // -- mode Mobile Money (import simulé) -----------------------------------
+  // Très courant en Afrique de l'Ouest : la majorité des encaissements passe
+  // par Orange Money / Moov Money. On simule l'import de la dernière notification
+  // de paiement (SMS) et on pré-remplit une vente encaissée (éditable).
+  const [momoRunning, setMomoRunning] = useState(false);
+  const [momoSms, setMomoSms] = useState<string | null>(null);
+
+  function importMomo(operateur: "Orange Money" | "Moov Money") {
+    setMomoRunning(true);
+    setMomoSms(null);
+    setAmountHighlight(false);
+    setTimeout(() => {
+      const amount = 2000 + Math.floor(Math.random() * 24) * 500;
+      const num = `+226 7${Math.floor(Math.random() * 9)} ${Math.floor(
+        10 + Math.random() * 89
+      )} ${Math.floor(10 + Math.random() * 89)} ${Math.floor(
+        10 + Math.random() * 89
+      )}`;
+      setMomoSms(
+        `${operateur} : Vous avez recu ${amount.toLocaleString(
+          "fr-FR"
+        )} FCFA de ${num}. Transaction reussie.`
+      );
+      setDraft({
+        label: `Paiement reçu (${operateur})`,
+        amount,
+        category: "vente",
+      });
+      setMomoRunning(false);
+      setAmountHighlight(true);
+      setTimeout(() => setAmountHighlight(false), 1500);
+    }, 1200);
+  }
+
   // -- validation ----------------------------------------------------------
   function submit() {
     if (draft.amount <= 0) return;
@@ -210,12 +244,13 @@ export function AddTransaction({
         </div>
 
         {/* Sélecteur de mode */}
-        <div className="mb-4 grid grid-cols-3 gap-2">
+        <div className="mb-4 grid grid-cols-4 gap-2">
           {(
             [
               { k: "texte", label: "Texte", icon: "⌨️" },
               { k: "voix", label: "Voix", icon: "🎤" },
               { k: "photo", label: "Reçu", icon: "📷" },
+              { k: "momo", label: "MoMo", icon: "📱" },
             ] as { k: Mode; label: string; icon: string }[]
           ).map((m) => (
             <button
@@ -358,7 +393,56 @@ export function AddTransaction({
           </div>
         )}
 
-        {/* --- Brouillon éditable (commun aux 3 modes) --- */}
+        {/* --- Mode Mobile Money (import simulé) --- */}
+        {mode === "momo" && (
+          <div className="space-y-3">
+            <p className="text-xs text-gray-600">
+              Importez votre dernier encaissement Mobile Money :
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => importMomo("Orange Money")}
+                disabled={momoRunning}
+                className="rounded-xl bg-[#FF6600] py-3 text-xs font-semibold text-white disabled:opacity-60"
+              >
+                📱 Orange Money
+              </button>
+              <button
+                onClick={() => importMomo("Moov Money")}
+                disabled={momoRunning}
+                className="rounded-xl bg-[#1675C9] py-3 text-xs font-semibold text-white disabled:opacity-60"
+              >
+                📱 Moov Money
+              </button>
+            </div>
+
+            {momoRunning && (
+              <p className="flex items-center justify-center gap-1 text-center text-[12px] font-medium text-brand">
+                <span className="animate-listen inline-block h-2 w-2 rounded-full bg-brand" />
+                Lecture de la notification
+                <span className="dot">.</span>
+                <span className="dot">.</span>
+                <span className="dot">.</span>
+              </p>
+            )}
+
+            {momoSms && (
+              <div className="animate-badge rounded-xl border border-gray-200 bg-white px-3 py-2 text-[11px] leading-snug text-gray-600 shadow-sm">
+                <span className="mb-1 block text-[10px] font-semibold uppercase text-gray-400">
+                  SMS reçu
+                </span>
+                {momoSms}
+              </div>
+            )}
+
+            <p className="text-center text-[11px] text-gray-400">
+              Import simulé pour la démo — en production : lecture des
+              notifications / API opérateur. Montant éditable.
+            </p>
+          </div>
+        )}
+
+        {/* --- Brouillon éditable (commun à tous les modes) --- */}
         <div className="mt-5 space-y-3 rounded-2xl bg-gray-50 p-3">
           <p className="text-xs font-semibold text-gray-500">
             Vérifier et corriger avant d&apos;enregistrer

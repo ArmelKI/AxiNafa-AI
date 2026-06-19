@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: #f5f7f7;
+  color: #1a2422;
+}
+
+/* Conteneur principal — mobile-first, centré et borné sur grand écran */
+.app-shell {
+  width: 100%;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (min-width: 768px) {
+  .app-shell {
+    max-width: 760px;
+  }
+}
+
+/* Petite animation d'apparition réutilisable */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: fadeInUp 0.35s ease both;
+}
